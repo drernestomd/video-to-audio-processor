@@ -158,7 +158,10 @@ async function processVideoAsync(jobId, externalJobId, videoUrl, webhookUrl, cal
 
 async function downloadFile(url, jobId) {
   const tempDir = os.tmpdir();
-  const fileName = `${jobId}_video${path.extname(url) || '.mp4'}`;
+  // Extract clean extension without URL parameters
+  const urlWithoutParams = url.split('?')[0];
+  const extension = path.extname(urlWithoutParams) || '.mp4';
+  const fileName = `${jobId}_video${extension}`;
   const filePath = path.join(tempDir, fileName);
 
   const response = await axios({
