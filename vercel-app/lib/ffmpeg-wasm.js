@@ -1,5 +1,3 @@
-const { FFmpeg } = require('@ffmpeg/ffmpeg');
-const { fetchFile, toBlobURL } = require('@ffmpeg/util');
 const fs = require('fs');
 const path = require('path');
 const os = require('os');
@@ -14,6 +12,10 @@ class FFmpegWasmProcessor {
     if (this.isLoaded) return;
 
     try {
+      // Dynamic import for ESM packages
+      const { FFmpeg } = await import('@ffmpeg/ffmpeg');
+      const { toBlobURL } = await import('@ffmpeg/util');
+      
       this.ffmpeg = new FFmpeg();
       
       // Load FFmpeg WebAssembly
@@ -35,6 +37,9 @@ class FFmpegWasmProcessor {
     try {
       await this.initialize();
 
+      // Dynamic import for fetchFile
+      const { fetchFile } = await import('@ffmpeg/util');
+      
       // Read input file
       const inputData = await fetchFile(inputPath);
       const inputFileName = 'input.mp4';
@@ -111,6 +116,9 @@ class FFmpegWasmProcessor {
     try {
       await this.initialize();
 
+      // Dynamic import for fetchFile
+      const { fetchFile } = await import('@ffmpeg/util');
+      
       // Read file
       const inputData = await fetchFile(filePath);
       const inputFileName = 'validate.mp4';
