@@ -1,18 +1,19 @@
-const { v4: uuidv4 } = require('uuid');
-const { JobManager, JOB_STATUS } = require('../../lib/jobs');
-const FileDownloader = require('../../utils/download');
-const ProcessingService = require('../../lib/processing-service');
-const { put } = require('@vercel/blob');
-const fs = require('fs');
+import { v4 as uuidv4 } from 'uuid';
+import { JobManager, JOB_STATUS } from '../../lib/jobs.js';
+import FileDownloader from '../../utils/download.js';
+import ProcessingService from '../../lib/processing-service.js';
+import { put } from '@vercel/blob';
+import fs from 'fs';
 
 // Function to get the appropriate FFmpeg processor
 async function getFFmpegProcessor() {
   if (process.env.VERCEL) {
     // Dynamic import for ES module
-    const module = await import('../../lib/ffmpeg-wasm');
+    const module = await import('../../lib/ffmpeg-wasm.js');
     return module.default;
   } else {
-    return require('../../lib/ffmpeg');
+    const module = await import('../../lib/ffmpeg.js');
+    return module.default;
   }
 }
 
@@ -58,65 +59,65 @@ export default async function handler(req, res) {
 
     console.log(`Created job ${jobId} for video: ${videoUrl}`);
 
-    // Determine processing method
-    try {
-      const processingResult = await processingServiceInstance.processJob(jobId, videoUrl, processingService);
-      
-      if (processingResult.useLocalProcessing) {
-        // Use local Vercel WebAssembly processing
-        console.log(`Using local processing for job ${jobId}`);
-        processVideoAsync(jobId, videoUrl);
-      } else {
-        // Job submitted to external service
-        console.log(`Job ${jobId} submitted to ${processingResult.serviceName}`);
-        JobManager.updateJob(jobId, {
-          processingService: processingResult.serviceType,
-          externalProcessing: true,
-          submittedAt: processingResult.submittedAt
-        });
-      }
-
-      // Return job ID immediately with processing info
-      res.status(202).json({
-        success: true,
-        jobId: jobId,
-        status: JOB_STATUS.QUEUED,
-        message: 'Video processing started. Use the job ID to check status.',
-        statusUrl: `/api/status/${jobId}`,
-        downloadUrl: `/api/download/${jobId}`,
-        processingService: processingResult.serviceType,
-        serviceName: processingResult.serviceName,
-        externalProcessing: !processingResult.useLocalProcessing
-      });
-
-    } catch (processingError) {
-      console.error(`Failed to submit job ${jobId}:`, processingError);
-      
-      // Fallback to local processing if external service fails
-      if (processingService && processingService !== 'vercel') {
-        console.log(`Falling back to local processing for job ${jobId}`);
-        processVideoAsync(jobId, videoUrl);
-        
-        res.status(202).json({
-          success: true,
-          jobId: jobId,
-          status: JOB_STATUS.QUEUED,
-          message: 'Video processing started with fallback service. Use the job ID to check status.',
-          statusUrl: `/api/status/${jobId}`,
-          downloadUrl: `/api/download/${jobId}`,
-          processingService: 'vercel',
-          serviceName: 'Vercel WebAssembly (Fallback)',
-          externalProcessing: false,
-          fallback: true
-        });
-      } else {
-        JobManager.setJobFailed(jobId, processingError);
-        throw processingError;
-      }
+    // RAILWAY ONLY - NO FALLBACKS, NO LOCAL PROCESSING
+    const processingResult = await processingServiceInstance.processJob(jobId, videoUrl, processingService);
+    
+    // Verify it's using Railway
+    if (processingResult.serviceType !== 'railway') {
+      throw new Error('INVALID: Only Railway processing is allowed');
     }
+    
+    // Update job status
+    console.log(`Job ${jobId} submitted to Railway: ${processingResult.serviceName}`);
+    JobManager.updateJob(jobId, {
+      processingService: 'railway',
+      externalProcessing: true,
+      submittedAt: processingResult.submittedAt
+    });
+
+    // Return job ID immediately
+    res.status(202).json({
+      success: true,
+      jobId: jobId,
+      status: JOB_STATUS.QUEUED,
+      message: 'Video processing started on Railway (no local fallback).',
+      statusUrl: `/api/status/${jobId}`,
+      downloadUrl: `/api/download/${jobId}`,
+      processingService: 'railway',
+      serviceName: processingResult.serviceName,
+      externalProcessing: true,
+      railwayOnly: true
+    });
 
   } catch (error) {
     console.error('Extract audio API error:', error);
+    
+    // Check if it's a Railway configuration error
+    if (error.message && error.message.includes('Railway processing service is required but not configured')) {
+      return res.status(503).json({
+        error: 'Service configuration error',
+        message: 'Railway processing service is not configured.',
+        details: 'RAILWAY_PROCESSING_URL environment variable is required but not set.',
+        statusCode: 503
+      });
+    }
+    
+    // Check if it's a Railway connection error
+    if (error.message && (error.message.includes('Failed to submit job to Railway') || error.message.includes('Railway'))) {
+      return res.status(503).json({
+        error: 'Processing service unavailable',
+        message: 'Unable to connect to Railway processing service.',
+        details: 'The Railway processing service is not responding. This may be due to network connectivity, service downtime, or authentication issues.',
+        alternatives: {
+          checkStatus: 'Check Railway service status at your Railway dashboard',
+          retryLater: 'The service may become available again. Please try again in a few minutes.',
+          manualProcessing: 'You can manually convert your video using online tools like CloudConvert, Convertio, or local software like VLC Media Player.'
+        },
+        retryAfter: 300, // 5 minutes
+        statusCode: 503
+      });
+    }
+    
     res.status(500).json({ 
       error: 'Internal server error',
       message: 'An unexpected error occurred while processing your request'
@@ -219,9 +220,4 @@ function validateEnvironment() {
   }
 }
 
-// Validate environment on module load
-try {
-  validateEnvironment();
-} catch (error) {
-  console.warn('Environment validation warning:', error.message);
-}
+// Note: Environment validation moved to runtime instead of module load

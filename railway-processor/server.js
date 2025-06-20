@@ -200,19 +200,31 @@ async function extractAudio(inputPath, jobId) {
 }
 
 async function uploadAudio(audioFilePath, jobId) {
-  // For this example, we'll use a simple file server approach
-  // In production, you'd upload to S3, Google Cloud Storage, etc.
-  
-  // For now, we'll return a placeholder URL
-  // You should implement actual file upload here
+  // Read the audio file
+  const audioBuffer = fs.readFileSync(audioFilePath);
   const fileName = `${jobId}.mp3`;
   
-  // Example: Upload to your storage service
-  // const uploadResult = await uploadToS3(audioFilePath, fileName);
-  // return uploadResult.url;
-  
-  // Placeholder - replace with actual upload logic
-  return `https://your-storage-service.com/audio/${fileName}`;
+  // Upload to Vercel Blob Storage using the same token
+  try {
+    const response = await axios.put(
+      `https://blob.vercel-storage.com/${fileName}`, 
+      audioBuffer,
+      {
+        headers: {
+          'Authorization': `Bearer ${process.env.BLOB_READ_WRITE_TOKEN}`,
+          'Content-Type': 'audio/mpeg',
+          'x-content-type': 'audio/mpeg'
+        },
+        timeout: 60000
+      }
+    );
+    
+    return response.data.url;
+  } catch (error) {
+    console.error('Upload failed:', error);
+    // Fallback: return a temporary URL (you could implement a simple file server)
+    throw new Error('Failed to upload audio file');
+  }
 }
 
 async function sendWebhook(webhookUrl, payload, headers = {}) {

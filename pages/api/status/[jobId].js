@@ -1,4 +1,4 @@
-const { JobManager } = require('../../../lib/jobs');
+import { JobManager } from '../../../lib/jobs.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {

@@ -1,5 +1,5 @@
-const { JobManager } = require('../../../lib/jobs');
-const axios = require('axios');
+import { JobManager } from '../../../lib/jobs.js';
+import axios from 'axios';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {

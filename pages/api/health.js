@@ -1,4 +1,4 @@
-const ProcessingService = require('../../lib/processing-service');
+import ProcessingService from '../../lib/processing-service.js';
 
 export default async function handler(req, res) {
   if (req.method !== 'GET') {

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vercel Deployment Tester</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            background: #f5f5f5;
+        }
+        .container {
+            background: white;
+            padding: 30px;
+            border-radius: 10px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        h1 {
+            color: #333;
+            text-align: center;
+            margin-bottom: 30px;
+        }
+        .input-group {
+            margin-bottom: 20px;
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: 600;
+            color: #555;
+        }
+        input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 6px;
+            font-size: 16px;
+            box-sizing: border-box;
+        }
+        input[type="text"]:focus {
+            outline: none;
+            border-color: #0070f3;
+        }
+        .test-button {
+            background: #0070f3;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 16px;
+            margin: 5px;
+            transition: background 0.2s;
+        }
+        .test-button:hover {
+            background: #0051cc;
+        }
+        .test-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        .results {
+            margin-top: 30px;
+        }
+        .test-result {
+            margin: 10px 0;
+            padding: 15px;
+            border-radius: 6px;
+            border-left: 4px solid #ddd;
+        }
+        .success {
+            background: #f0f9ff;
+            border-left-color: #10b981;
+            color: #065f46;
+        }
+        .error {
+            background: #fef2f2;
+            border-left-color: #ef4444;
+            color: #991b1b;
+        }
+        .warning {
+            background: #fffbeb;
+            border-left-color: #f59e0b;
+            color: #92400e;
+        }
+        .info {
+            background: #f0f9ff;
+            border-left-color: #3b82f6;
+            color: #1e40af;
+        }
+        .endpoint-url {
+            font-family: monospace;
+            background: #f3f4f6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-size: 14px;
+        }
+        .response-data {
+            background: #f8f9fa;
+            border: 1px solid #e9ecef;
+            border-radius: 4px;
+            padding: 10px;
+            margin-top: 10px;
+            font-family: monospace;
+            font-size: 12px;
+            white-space: pre-wrap;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        .button-group {
+            text-align: center;
+            margin: 20px 0;
+        }
+        .status-indicator {
+            display: inline-block;
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+            margin-right: 8px;
+        }
+        .status-success { background: #10b981; }
+        .status-error { background: #ef4444; }
+        .status-warning { background: #f59e0b; }
+        .status-info { background: #3b82f6; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>🚀 Vercel Deployment Tester</h1>
+        
+        <div class="input-group">
+            <label for="domain">Your Vercel Domain:</label>
+            <input type="text" id="domain" placeholder="your-project.vercel.app" value="">
+        </div>
+        
+        <div class="button-group">
+            <button class="test-button" onclick="testAllEndpoints()">Test All Endpoints</button>
+            <button class="test-button" onclick="testHealthOnly()">Test Health Only</button>
+            <button class="test-button" onclick="clearResults()">Clear Results</button>
+        </div>
+        
+        <div id="results" class="results"></div>
+    </div>
+
+    <script>
+        const endpoints = [
+            { path: '/api/health', name: 'Health Check', method: 'GET' },
+            { path: '/api/extract-audio', name: 'Extract Audio', method: 'GET' },
+            { path: '/api/status/test-job', name: 'Status Check', method: 'GET' },
+            { path: '/api/download/test-job', name: 'Download', method: 'GET' },
+            { path: '/api/webhook/processing-complete', name: 'Webhook', method: 'GET' }
+        ];
+
+        function getDomain() {
+            const domain = document.getElementById('domain').value.trim();
+            if (!domain) {
+                alert('Please enter your Vercel domain');
+                return null;
+            }
+            return domain.replace(/^https?:\/\//, '');
+        }
+
+        function addResult(endpoint, status, message, data = null, isError = false) {
+            const resultsDiv = document.getElementById('results');
+            const resultDiv = document.createElement('div');
+            
+            let className = 'test-result ';
+            let statusClass = 'status-';
+            
+            if (status >= 200 && status < 300) {
+                className += 'success';
+                statusClass += 'success';
+            } else if (status === 404) {
+                className += 'warning';
+                statusClass += 'warning';
+            } else if (status === 405) {
+                className += 'info';
+                statusClass += 'info';
+            } else if (isError || status >= 500) {
+                className += 'error';
+                statusClass += 'error';
+            } else {
+                className += 'warning';
+                statusClass += 'warning';
+            }
+            
+            resultDiv.className = className;
+            
+            let html = `
+                <div>
+                    <span class="status-indicator ${statusClass}"></span>
+                    <strong>${endpoint.name}</strong> 
+                    <span class="endpoint-url">${endpoint.method} ${endpoint.path}</span>
+                </div>
+                <div>Status: ${status} - ${message}</div>
+            `;
+            
+            if (data) {
+                html += `<div class="response-data">${JSON.stringify(data, null, 2)}</div>`;
+            }
+            
+            resultDiv.innerHTML = html;
+            resultsDiv.appendChild(resultDiv);
+        }
+
+        async function testEndpoint(domain, endpoint) {
+            const url = `https://${domain}${endpoint.path}`;
+            
+            try {
+                const response = await fetch(url, {
+                    method: endpoint.method,
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json'
+                    }
+                });
+                
+                let data = null;
+                const contentType = response.headers.get('content-type');
+                
+                if (contentType && contentType.includes('application/json')) {
+                    try {
+                        data = await response.json();
+                    } catch (e) {
+                        data = { error: 'Invalid JSON response' };
+                    }
+                } else {
+                    const text = await response.text();
+                    data = { response: text.substring(0, 200) };
+                }
+                
+                let message = '';
+                if (response.status === 200) {
+                    message = 'SUCCESS';
+                } else if (response.status === 404) {
+                    message = 'NOT FOUND (endpoint may not be deployed)';
+                } else if (response.status === 405) {
+                    message = 'Method not allowed (but endpoint exists!)';
+                } else if (response.status >= 500) {
+                    message = 'SERVER ERROR';
+                } else {
+                    message = response.statusText || 'Unknown status';
+                }
+                
+                addResult(endpoint, response.status, message, data);
+                
+            } catch (error) {
+                addResult(endpoint, 'ERROR', `Connection failed: ${error.message}`, null, true);
+            }
+        }
+
+        async function testAllEndpoints() {
+            const domain = getDomain();
+            if (!domain) return;
+            
+            clearResults();
+            
+            const resultsDiv = document.getElementById('results');
+            resultsDiv.innerHTML = '<div class="test-result info">🧪 Testing all endpoints...</div>';
+            
+            for (const endpoint of endpoints) {
+                await testEndpoint(domain, endpoint);
+                // Small delay between requests
+                await new Promise(resolve => setTimeout(resolve, 500));
+            }
+            
+            // Remove the "testing" message
+            const testingMsg = resultsDiv.querySelector('.test-result.info');
+            if (testingMsg) testingMsg.remove();
+            
+            // Add summary
+            const results = resultsDiv.querySelectorAll('.test-result');
+            const successCount = resultsDiv.querySelectorAll('.test-result.success').length;
+            const errorCount = resultsDiv.querySelectorAll('.test-result.error').length;
+            
+            const summaryDiv = document.createElement('div');
+            summaryDiv.className = 'test-result info';
+            summaryDiv.innerHTML = `
+                <strong>📋 Summary:</strong><br>
+                ✅ Successful: ${successCount}<br>
+                ❌ Errors: ${errorCount}<br>
+                📊 Total tested: ${results.length}
+            `;
+            resultsDiv.insertBefore(summaryDiv, resultsDiv.firstChild);
+        }
+
+        async function testHealthOnly() {
+            const domain = getDomain();
+            if (!domain) return;
+            
+            clearResults();
+            
+            const healthEndpoint = endpoints.find(e => e.path === '/api/health');
+            await testEndpoint(domain, healthEndpoint);
+        }
+
+        function clearResults() {
+            document.getElementById('results').innerHTML = '';
+        }
+
+        // Auto-focus on domain input
+        document.getElementById('domain').focus();
+        
+        // Allow Enter key to trigger test
+        document.getElementById('domain').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                testHealthOnly();
+            }
+        });
+    </script>
+</body>
+</html>

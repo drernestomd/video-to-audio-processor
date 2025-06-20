@@ -2,6 +2,7 @@
   "name": "video-to-audio-api",
   "version": "1.0.0",
   "description": "Next.js API for converting video to audio",
+  "type": "module",
   "main": "index.js",
   "scripts": {
     "dev": "next dev",

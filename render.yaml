@@ -1,0 +1,14 @@
+services:
+  - type: web
+    name: video-to-audio-processor
+    env: node
+    plan: starter
+    buildCommand: cd railway-processor && npm install
+    startCommand: cd railway-processor && npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 10000
+      - key: PROCESSING_SERVICE_TOKEN
+        value: railway_secure_token_2024_vta_api
