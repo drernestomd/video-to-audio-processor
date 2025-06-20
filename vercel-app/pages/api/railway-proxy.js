@@ -4,7 +4,7 @@ export default async function handler(req, res) {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  const railwayUrl = process.env.RAILWAY_PROCESSING_URL || 'https://video-to-audio-processor-production.up.railway.app';
+  const railwayUrl = process.env.RAILWAY_PROCESSING_URL || 'https://video-processor-final-production.up.railway.app';
   const maxRetries = 2;
   let lastError = null;
 
@@ -22,7 +22,7 @@ export default async function handler(req, res) {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
-          'Authorization': `Bearer ${process.env.PROCESSING_SERVICE_TOKEN || 'railway_secure_token_2024_vta_api'}`,
+          'Authorization': `Bearer ${process.env.PROCESSING_SERVICE_TOKEN || 'zzpPQseXi3m0oSbaey53JyM6UifXoHw63YJTV85U8hM='}`,
           'User-Agent': 'Vercel-Proxy/1.0.0',
           'X-Forwarded-For': req.headers['x-forwarded-for'] || 'vercel',
           'X-Request-ID': req.headers['x-request-id'] || `proxy-${Date.now()}`

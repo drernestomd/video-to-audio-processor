@@ -45,7 +45,47 @@ export default async function handler(req, res) {
       ffmpegStatus = 'unavailable';
     }
 
-    // Check processing services
+    // Check Railway connectivity
+    let railwayHealth = { status: 'unknown' };
+    try {
+      const railwayUrl = process.env.RAILWAY_PROCESSING_URL || 'https://video-processor-final-production.up.railway.app';
+      
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 5000);
+      
+      const response = await fetch(`${railwayUrl}/health`, {
+        method: 'GET',
+        signal: controller.signal,
+        headers: { 'User-Agent': 'Vercel-Health-Check/1.0.0' }
+      });
+      
+      clearTimeout(timeoutId);
+      
+      if (response.ok) {
+        const data = await response.json();
+        railwayHealth = {
+          status: 'connected',
+          uptime: data.uptime,
+          memory: data.memory,
+          service: data.service,
+          lastCheck: new Date().toISOString()
+        };
+      } else {
+        railwayHealth = {
+          status: 'error',
+          httpStatus: response.status,
+          lastCheck: new Date().toISOString()
+        };
+      }
+    } catch (error) {
+      railwayHealth = {
+        status: 'unreachable',
+        error: error.message,
+        lastCheck: new Date().toISOString()
+      };
+    }
+
+    // Check processing services  
     const processingService = new ProcessingService();
     const availableServices = processingService.getAvailableServices();
     const hasExternalProcessing = processingService.hasExternalProcessing();
@@ -56,7 +96,8 @@ export default async function handler(req, res) {
         environment: envChecks,
         ffmpeg: ffmpegStatus,
         storage: envChecks.blobToken ? 'configured' : 'missing',
-        externalProcessing: hasExternalProcessing
+        externalProcessing: hasExternalProcessing,
+        railway: railwayHealth
       },
       processingServices: {
         available: availableServices,
