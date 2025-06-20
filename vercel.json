@@ -1,8 +1,6 @@
 {
-  "buildCommand": "cd vercel-app && npm install",
-  "outputDirectory": "vercel-app",
   "functions": {
-    "vercel-app/pages/api/**/*.js": {
+    "pages/api/**/*.js": {
       "maxDuration": 60
     }
   },
