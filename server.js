@@ -7,6 +7,11 @@ const path = require('path');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 
+// Configure FFmpeg path
+const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+ffmpeg.setFfmpegPath(ffmpegPath);
+console.log('FFmpeg configured at:', ffmpegPath);
+
 const app = express();
 const PORT = process.env.PORT || 3001;
 
