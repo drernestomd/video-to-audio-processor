@@ -1,19 +1,17 @@
-import { v4 as uuidv4 } from 'uuid';
-import { JobManager, JOB_STATUS } from '../../lib/jobs.js';
-import FileDownloader from '../../utils/download.js';
-import ProcessingService from '../../lib/processing-service.js';
-import { put } from '@vercel/blob';
-import fs from 'fs';
+const { v4: uuidv4 } = require('uuid');
+const { JobManager, JOB_STATUS } = require('../../lib/jobs.js');
+const FileDownloader = require('../../utils/download.js');
+const ProcessingService = require('../../lib/processing-service.js');
+const { put } = require('@vercel/blob');
+const fs = require('fs');
 
 // Function to get the appropriate FFmpeg processor
 async function getFFmpegProcessor() {
   if (process.env.VERCEL) {
-    // Dynamic import for ES module
-    const module = await import('../../lib/ffmpeg-wasm.js');
-    return module.default;
+    // Dynamic require for CommonJS module
+    return require('../../lib/ffmpeg-wasm.js');
   } else {
-    const module = await import('../../lib/ffmpeg.js');
-    return module.default;
+    return require('../../lib/ffmpeg.js');
   }
 }
 
